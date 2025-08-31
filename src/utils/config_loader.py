@@ -89,7 +89,7 @@ class PipelineConfig:
 class ConfigLoader:
     """Utility for loading and validating pipeline configuration."""
 
-    def __init__(self, config_path: str | Path = "config/pipeline_config.yaml"):
+    def __init__(self, config_path: str | Path = "../config/pipeline_config.yaml"):
         """
         Initialize config loader.
 
@@ -146,7 +146,7 @@ class ConfigLoader:
             max_tokens=llm_classifier_raw.get("max_tokens", 50000),
             max_retries=llm_classifier_raw.get("max_retries", 3),
             save_results=llm_classifier_raw.get("save_results", True),
-            results_dir=llm_classifier_raw.get("results_dir", "baseline_results"),
+            results_dir=llm_classifier_raw.get("results_dir", "results/llm_classifier"),
         )
 
         # Parse semantic router config
@@ -180,7 +180,7 @@ class ConfigLoader:
             route_config=route_config,
             router_name=semantic_raw.get("router_name", "news-classification-router"),
             save_results=semantic_raw.get("save_results", True),
-            results_dir=semantic_raw.get("results_dir", "redis_results"),
+            results_dir=semantic_raw.get("results_dir", "results/semantic_router"),
         )
 
         # Parse data config
@@ -199,7 +199,7 @@ class ConfigLoader:
                 ["accuracy", "f1_macro", "total_latency", "total_cost"],
             ),
             save_results=comparison_raw.get("save_results", True),
-            results_dir=comparison_raw.get("results_dir", "comparison_results"),
+            results_dir=comparison_raw.get("results_dir", "results/comparison"),
         )
 
         return PipelineConfig(

@@ -2,7 +2,7 @@
 
 from typing import Any
 
-from baseline.llm_classifier import LLMClassifier
+from llm_classifier.llm_classifier import LLMClassifier
 from shared.data_types import BatchResult, FailedBatchResult, NewsCategory
 from shared.metrics import calculate_batch_metrics
 from utils.config_loader import ConfigLoader
@@ -13,7 +13,7 @@ from utils.logger import get_logger
 class LLMClassificationPipeline:
     """Pipeline for running LLM-based classification."""
 
-    def __init__(self, config_path: str = "config/pipeline_config.yaml"):
+    def __init__(self, config_path: str = "../config/pipeline_config.yaml"):
         """
         Initialize LLM classification pipeline.
 
@@ -56,7 +56,7 @@ class LLMClassificationPipeline:
         Returns:
             Tuple of (results, metrics)
         """
-        self.logger.info("=== BASELINE LLM CLASSIFICATION PIPELINE ===")
+        self.logger.info("=== LLM CLASSIFICATION PIPELINE ===")
         self.logger.info(f"Model: {self.config.llm_classifier.model_name}")
         self.logger.info(f"Batch size: {self.config.llm_classifier.batch_size}")
         self.logger.info(f"Max concurrent: {self.config.llm_classifier.max_concurrent}")

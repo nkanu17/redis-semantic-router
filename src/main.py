@@ -18,7 +18,7 @@ async def llm_cls(
     args: argparse.Namespace,
 ) -> tuple[list[BatchResult | FailedBatchResult], dict[str, Any]]:
     """Run baseline LLM classification."""
-    logger = get_logger("baseline_cmd")
+    logger = get_logger("llm_classifier_cmd")
 
     try:
         pipeline = LLMClassificationPipeline(args.config)
@@ -29,8 +29,8 @@ async def llm_cls(
         else:
             results, metrics = await pipeline.run()
 
-        log_metrics(logger, metrics, "BASELINE LLM")
-        log_classification_report(logger, metrics, "BASELINE LLM")
+        log_metrics(logger, metrics, "LLM CLASSIFIER")
+        log_classification_report(logger, metrics, "LLM CLASSIFIER")
         return results, metrics
 
     except Exception as e:
@@ -204,7 +204,7 @@ def main() -> None:
     parser.add_argument(
         "--config",
         type=str,
-        default="config/pipeline_config.yaml",
+        default="../config/pipeline_config.yaml",
         help="Path to configuration file",
     )
 

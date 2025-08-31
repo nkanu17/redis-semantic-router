@@ -2,7 +2,7 @@
 
 from typing import Any
 
-from semantic_routing.redis_router import RedisSemanticClassifier
+from semantic_router.redis_router import RedisSemanticClassifier
 from shared.data_types import NewsCategory
 from utils.config_loader import ConfigLoader
 from utils.data_loader import NewsDataLoader
@@ -13,7 +13,7 @@ from utils.redis_client import RedisConfig
 class SemanticTrainingPipeline:
     """Pipeline for training semantic router."""
 
-    def __init__(self, config_path: str = "config/pipeline_config.yaml"):
+    def __init__(self, config_path: str = "../config/pipeline_config.yaml"):
         """
         Initialize semantic training pipeline.
 

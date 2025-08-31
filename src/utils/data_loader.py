@@ -12,7 +12,7 @@ from utils.logger import get_logger
 class NewsDataLoader:
     def __init__(
         self,
-        data_dir="bbc-news-articles-labeled",
+        data_dir="../data/bbc-news-articles-labeled",
         train_file="train_data.csv",
         validation_file="validation_data.csv",
     ):

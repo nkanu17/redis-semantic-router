@@ -10,7 +10,7 @@ from utils.logger import get_logger
 class EvaluationPipeline:
     """Pipeline for evaluating and comparing classification results."""
 
-    def __init__(self, config_path: str = "config/pipeline_config.yaml"):
+    def __init__(self, config_path: str = "../config/pipeline_config.yaml"):
         """
         Initialize evaluation pipeline.
 
@@ -158,7 +158,6 @@ class EvaluationPipeline:
 
         return comparison
 
-
     def _log_comparison_results(self, comparison: dict[str, Any]) -> None:
         """Log comparison results in readable format."""
         self.logger.info("=== METRICS COMPARISON ===")
@@ -187,7 +186,6 @@ class EvaluationPipeline:
                     self.logger.info(
                         f"{metric}: {baseline_val:.3f} → {semantic_val:.3f} ({improvement:.2f}x)"
                     )
-
 
         # Log summary
         if "summary" in comparison:

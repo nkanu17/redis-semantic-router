@@ -2,7 +2,7 @@
 
 from typing import Any
 
-from semantic_routing.redis_router import RedisSemanticClassifier
+from semantic_router.redis_router import RedisSemanticClassifier
 from shared.data_types import BatchResult, FailedBatchResult, NewsCategory
 from shared.metrics import calculate_batch_metrics
 from utils.config_loader import ConfigLoader
@@ -14,7 +14,7 @@ from utils.redis_client import RedisConfig
 class SemanticClassificationPipeline:
     """Pipeline for classification using existing trained semantic router."""
 
-    def __init__(self, config_path: str = "config/pipeline_config.yaml"):
+    def __init__(self, config_path: str = "../config/pipeline_config.yaml"):
         """
         Initialize semantic classification pipeline.
 

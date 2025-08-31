@@ -10,7 +10,7 @@ from typing import Any
 import litellm
 from litellm import acompletion
 
-from baseline.prompts import fetch_prompt
+from llm_classifier.prompts import fetch_prompt
 from shared.base_classifier import BaseClassifier
 from shared.data_types import (
     BatchResult,
@@ -77,7 +77,6 @@ class LLMClassifier(BaseClassifier):
         litellm.set_verbose = False
         litellm.suppress_debug_info = True
         litellm._async_logging = False
-
 
     def _is_retryable_error(self, error: Exception) -> bool:
         """Check if an error is retryable using proper exception classification."""
@@ -427,5 +426,3 @@ class LLMClassifier(BaseClassifier):
             "supports_training": self.supports_training(),
             "is_ready": self.is_ready(),
         }
-
-

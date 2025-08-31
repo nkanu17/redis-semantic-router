@@ -6,7 +6,7 @@ from typing import Any
 from redis_retrieval_optimizer.threshold_optimization import RouterThresholdOptimizer
 from redisvl.extensions.router import SemanticRouter
 
-from semantic_routing.route_builder import RouteBuilder
+from semantic_router.route_builder import RouteBuilder
 from shared.base_classifier import BaseClassifier
 from shared.data_types import (
     BatchResult,
