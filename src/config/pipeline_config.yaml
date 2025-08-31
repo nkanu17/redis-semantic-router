@@ -1,0 +1,61 @@
+# News Classification Pipeline Configuration
+
+# LLM Classifier Configuration
+llm_classifier:
+  model_name: "claude-sonnet-4-20250514"
+  batch_size: 10
+  max_concurrent: 20
+  temperature: 0
+  max_tokens: 50000
+  max_retries: 3
+  save_results: true
+  results_dir: "baseline_results"
+
+# Redis Semantic Router Configuration  
+semantic_router:
+  redis:
+    host: "localhost"
+    port: 6379
+    db: 0
+    socket_timeout: 30.0
+    socket_connect_timeout: 30.0
+    retry_on_timeout: true
+    decode_responses: true
+  
+  embedding_model: "sentence-transformers/all-MiniLM-L6-v2"
+  # TODO: remove max_text_length?
+  route_config:
+    samples_per_class: 100
+    initial_threshold: 0.6
+    max_text_length: 3000
+    optimize_thresholds: true
+  
+  router_name: "news-classification-router"
+  save_results: true
+  results_dir: "redis_results"
+
+# Data Configuration
+data:
+  dataset_path: "/Users/nitin/per/tests/redis_semantic_router/bbc-news-articles-labeled"
+  train_file: "train_data.csv"
+  validation_file: "validation_data.csv"
+
+# Comparison Configuration
+comparison:
+  metrics_to_track: 
+    - "accuracy"
+    - "f1_macro" 
+    - "f1_weighted"
+    - "precision_macro"
+    - "recall_macro"
+    - "total_latency"
+    - "avg_latency_per_article" 
+    - "total_cost"
+    - "cost_per_article"
+    - "success_rate"
+  
+  save_results: true
+  results_dir: "comparison_results"
+  # Redis Setup Instructions
+redis_setup:
+  docker_command: "docker run -d --name redis -p 6379:6379 redis/redis-stack:latest"
