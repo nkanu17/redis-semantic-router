@@ -196,14 +196,6 @@ python main.py status
 open http://localhost:8001
 ```
 
-## Expected Performance
-
-| Metric | Baseline LLM | Semantic Router |
-|--------|--------------|-----------------|
-| Accuracy | ~95% | ~85-90% |
-| Latency/article | ~2-5s | ~50ms |
-| Cost/article | ~$0.01-0.03 | ~$0.0001 |
-| Training time | None | ~30s |
 
 ## Performance Analysis at Scale
 
