@@ -107,14 +107,14 @@ The codebase follows a **modular pipeline architecture** where each component ca
 
 **LLM Classifier Flow:**
 ```
-Articles → Batch → LLM Prompt → LiteLLM API → JSON Parse → Classification
+Articles → Batch → LLM Prompt → Async LiteLLM API → Classification
 ```
 
 **Semantic Router Flow:**
 ```
 Training: Articles → Sample → Embeddings → Redis Vector Index
 Runtime:  Article → Embed → Vector Search → Classification
-                           (~50ms)         (~$0.0001/article)
+                           
 ```
 
 ### Project Structure
@@ -208,14 +208,14 @@ Based on actual test results with 373 validation articles, here's the projected 
 
 ### Semantic Router
 - **Total cost**: $0 (no API costs after training)
-- **Total processing time**: 29.3 minutes (17.6ms per article)  
-- **Accuracy**: 91.7%
+- **Total processing time**: 29.9 minutes (17.9ms per article)  
+- **Accuracy**: 94.1%
 
 ### Trade-offs at Scale
 - **Cost savings**: 100% ($189 → $0)
-- **Speed improvement**: 25.2x faster (12.3 hours → 29.3 minutes)
-- **Accuracy trade-off**: 5.1% accuracy loss (96.8% → 91.7%)
-- **F1 macro trade-off**: 5.2% F1 loss (96.7% → 91.6%)
+- **Speed improvement**: 24.7x faster (12.3 hours → 29.9 minutes)
+- **Accuracy trade-off**: 2.7% accuracy loss (96.8% → 94.1%)
+- **F1 macro trade-off**: 2.6% F1 loss (96.7% → 94.1%)
 
 The semantic router provides massive operational benefits for high-volume classification scenarios, with the accuracy trade-off often acceptable for real-time applications.
 

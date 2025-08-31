@@ -94,6 +94,13 @@ class SemanticTrainingPipeline:
             )
             classifier.optimize_thresholds(validation_data)
 
+        # Apply threshold overrides if provided
+        if self.config.semantic_router.route_config.threshold_overrides:
+            self.logger.info("=== APPLYING THRESHOLD OVERRIDES ===")
+            classifier.apply_threshold_overrides(
+                self.config.semantic_router.route_config.threshold_overrides
+            )
+
         # Get training summary
         training_summary = classifier.get_classifier_info()
         training_summary["training_samples"] = len(train_data)

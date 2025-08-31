@@ -190,7 +190,7 @@ def main() -> None:
     parser.add_argument(
         "command",
         choices=[
-            "llm_classifier",
+        "llm_classifier",
             "train_router",
             "semantic_router",
             "evaluate",

@@ -106,7 +106,14 @@ class SemanticClassificationPipeline:
         if not classifier.load_existing_router():
             raise RuntimeError(
                 f"No trained router '{self.config.semantic_router.router_name}' found in Redis. "
-                "Run 'python main.py semantic train' first."
+                "Run 'python main.py train_router' first."
+            )
+
+        # Apply threshold overrides if provided
+        if self.config.semantic_router.route_config.threshold_overrides:
+            self.logger.info("=== APPLYING THRESHOLD OVERRIDES ===")
+            classifier.apply_threshold_overrides(
+                self.config.semantic_router.route_config.threshold_overrides
             )
 
         # Run classification

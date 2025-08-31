@@ -15,5 +15,8 @@ dependencies = [
     "litellm",
     "scikit-learn",
     "sentence-transformers>=5.1.0",
-    "redis-retrieval-optimizer==0.4.1"
+    "redis-retrieval-optimizer==0.4.1",
+    "redis>=5.0.0",
+    "redisvl>=0.3.0",
+    "pyyaml>=6.0"
 ]

@@ -44,6 +44,7 @@ class RouteConfig:
     initial_threshold: float
     max_text_length: int
     optimize_thresholds: bool
+    threshold_overrides: dict[str, float] | None = None
 
 
 @dataclass
@@ -170,6 +171,7 @@ class ConfigLoader:
             initial_threshold=route_raw.get("initial_threshold", 0.75),
             max_text_length=route_raw.get("max_text_length", 500),
             optimize_thresholds=route_raw.get("optimize_thresholds", True),
+            threshold_overrides=route_raw.get("threshold_overrides"),
         )
 
         semantic_router = SemanticRouterConfig(

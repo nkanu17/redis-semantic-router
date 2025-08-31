@@ -353,6 +353,37 @@ class RedisSemanticClassifier(BaseClassifier):
             self.logger.error(f"Failed to optimize thresholds: {e}")
             raise
 
+    def apply_threshold_overrides(self, threshold_overrides: dict[str, float]) -> None:
+        """
+        Apply threshold overrides from configuration.
+
+        Args:
+            threshold_overrides: Dictionary mapping route names to threshold values
+        """
+        if not self.is_trained or self.router is None:
+            raise RuntimeError("Router must be trained before applying threshold overrides")
+
+        self.logger.info(f"Applying threshold overrides for {len(threshold_overrides)} routes")
+
+        try:
+            for route in self.router.routes:
+                if route.name in threshold_overrides:
+                    old_threshold = route.distance_threshold
+                    route.distance_threshold = threshold_overrides[route.name]
+                    self.logger.info(
+                        f"Route '{route.name}': {old_threshold:.3f} → {route.distance_threshold:.3f}"
+                    )
+                else:
+                    self.logger.info(
+                        f"Route '{route.name}': keeping threshold {route.distance_threshold:.3f}"
+                    )
+
+            self.logger.info("Threshold overrides applied successfully")
+
+        except Exception as e:
+            self.logger.error(f"Failed to apply threshold overrides: {e}")
+            raise
+
     def supports_training(self) -> bool:
         """Redis classifier supports training."""
         return True
