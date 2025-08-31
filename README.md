@@ -6,8 +6,6 @@ A proof-of-concept comparing LLM-based news classification with Redis semantic r
 
 This project implements two approaches for classifying BBC news articles into 5 categories (**business**, **entertainment**, **politics**, **sport**, **tech**):
 
-> **Note:** Classification categories are defined in the `NewsCategory` enum in `shared/data_types.py`. To add new categories, update this enum rather than configuration files.
-
 1. **Baseline LLM**: Uses LiteLLM with Claude for direct text classification
 2. **Redis Semantic Router**: Uses vector embeddings and Redis for fast similarity-based classification
 
@@ -75,14 +73,11 @@ python main.py semantic_router
 # Compare results from both approaches
 python main.py evaluate
 
-# Full end-to-end pipeline
-python main.py run-all
-
 # Clear all routes from Redis
 python main.py clear-routes
 ```
 
-### Options
+### Advanced Usage
 
 ```bash
 # Use custom config file
@@ -96,40 +91,67 @@ python main.py llm_classifier --train-articles
 python main.py semantic_router --train-articles
 ```
 
+### Development Workflows
+
+```bash
+# Development workflow - iterative testing
+python main.py train_router              # Train once
+python main.py semantic_router           # Test classification
+python main.py evaluate                 # Compare with baseline
+
+# Production workflow - full comparison
+python main.py llm_classifier            # Run LLM classifier
+python main.py semantic_router           # Use existing router
+python main.py evaluate                 # Generate comparison report
+
+# Router management
+python main.py train_router --force-retrain  # Retrain with new data
+python main.py clear-routes              # Clear Redis data
+python main.py status                    # Check system status
+```
+
 ## Architecture
 
 ### Project Structure
 ```
-src/
-├── main.py                    # CLI orchestrator
-├── pipelines/                 # Pipeline orchestration
-│   ├── llm_cls_pipeline.py    # LLM classification workflow
-│   ├── semantic_training_pipeline.py  # Router training workflow  
-│   ├── semantic_cls_pipeline.py       # Router classification workflow
-│   └── evaluation_pipeline.py         # Results comparison
-├── baseline/                  # LLM classification
-│   ├── llm_classifier.py      # LLMClassifier - async batch processor
-│   └── prompts.py             # LLM prompts
-├── semantic_routing/          # Vector-based classification
-│   └── redis_router.py        # Redis semantic classifier
-├── shared/                    # Common utilities
-│   ├── base_classifier.py     # Abstract classifier interface
-│   ├── data_types.py          # Shared data structures
-│   ├── metrics.py             # Performance metrics
-│   └── results_storage.py     # Results persistence
-├── utils/                     # Utilities
-│   ├── config_loader.py       # YAML config management
-│   ├── data_loader.py         # Dataset loading
-│   ├── logger.py              # Simple logging
-│   └── redis_client.py        # Redis connection
-└── config/
-    └── pipeline_config.yaml   # Configuration
-
-bbc-news-articles-labeled/
-├── train_data.csv             # Training dataset (1,117 articles) - auto-created
-├── validation_data.csv        # Validation dataset (373 articles) - auto-created
-├── BBC News Train.csv         # Original training data (1,490 articles)
-└── BBC News Test.csv          # Test dataset (735 articles)
+redis_semantic_router/
+├── README.md                  # Project documentation
+├── pyproject.toml             # Python project configuration
+├── config/                    # Configuration files
+│   └── pipeline_config.yaml   # Pipeline configuration
+├── data/                      # Input datasets
+│   └── bbc-news-articles-labeled/
+│       ├── train_data.csv     # Training dataset (1,117 articles)
+│       ├── validation_data.csv # Validation dataset (373 articles)
+│       ├── BBC News Train.csv # Original training data (1,490 articles)
+│       └── BBC News Test.csv  # Test dataset (735 articles)
+├── results/                   # Generated results (gitignored)
+│   ├── llm_classifier/        # LLM classification results
+│   ├── semantic_router/       # Semantic router results
+│   └── comparison/            # Evaluation results
+└── src/                       # Source code
+    ├── main.py                # CLI orchestrator
+    ├── pipelines/             # Pipeline orchestration
+    │   ├── llm_cls_pipeline.py # LLM classification workflow
+    │   ├── semantic_training_pipeline.py # Router training workflow
+    │   ├── semantic_cls_pipeline.py # Router classification workflow
+    │   └── evaluation_pipeline.py # Results comparison
+    ├── llm_classifier/         # LLM classification
+    │   ├── llm_classifier.py   # LLMClassifier - async batch processor
+    │   └── prompts.py          # LLM prompts
+    ├── semantic_router/        # Vector-based classification
+    │   ├── redis_router.py     # Redis semantic classifier
+    │   └── route_builder.py    # Route building utilities
+    ├── shared/                 # Common utilities
+    │   ├── base_classifier.py  # Abstract classifier interface
+    │   ├── data_types.py       # Shared data structures
+    │   ├── metrics.py          # Performance metrics
+    │   └── results_storage.py  # Results persistence
+    └── utils/                  # Utilities
+        ├── config_loader.py    # YAML config management
+        ├── data_loader.py      # Dataset loading
+        ├── logger.py           # Simple logging
+        └── redis_client.py     # Redis connection
 ```
 
 ### Baseline LLM Flow
@@ -147,23 +169,24 @@ Runtime:  Article → Embed → Vector Search → Classification
 ## Configuration
 
 Edit `config/pipeline_config.yaml`:
+> **Note:** Classification categories are defined in the `NewsCategory` enum in `shared/data_types.py`. To add new categories, update this enum rather than configuration files.
 
 ```yaml
 # Dataset settings  
 data:
-  dataset_path: "/path/to/bbc-news-articles-labeled"
+  dataset_path: "data/bbc-news-articles-labeled"
   train_file: "train_data.csv"
   validation_file: "validation_data.csv"
 
-# Baseline LLM settings
-baseline:
+# LLM Classifier settings
+llm_classifier:
   model_name: "claude-sonnet-4-20250514"
   batch_size: 10
   max_concurrent: 20
   temperature: 0
   max_tokens: 50000
   save_results: true
-  results_dir: "baseline_results"
+  results_dir: "results/llm_classifier"
 
 # Redis semantic router settings
 semantic_router:
@@ -174,16 +197,17 @@ semantic_router:
     initial_threshold: 0.6
     optimize_thresholds: true
   save_results: true
-  results_dir: "redis_results"
+  results_dir: "results/semantic_router"
 ```
 
 ## Results
 
 ### Output Structure
 ```
-├── baseline_results/          # LLM classification results
-├── redis_results/             # Semantic router results  
-└── comparison_results/        # Side-by-side comparison
+results/
+├── llm_classifier/            # LLM classification results
+├── semantic_router/           # Semantic router results  
+└── comparison/                # Side-by-side comparison
     └── 2025-08-30_22-15-04_7ff67441/
         ├── metrics.json       # Performance metrics
         ├── classifications.csv # Article-level predictions

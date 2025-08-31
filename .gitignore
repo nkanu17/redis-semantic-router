@@ -87,11 +87,18 @@ Thumbs.db
 
 # Project specific
 CLAUDE.md
-*.zip
-*.csv
+src/CLAUDE.md
+
+# Generated results and outputs
+results/
+baseline_results/
+redis_results/
+comparison_results/
+
+# Data files
+data/
 bbc-news-articles-labeled/
-*.pdf
-Redis Applied AI Technical Project FY26.pdf
+*.csv
 
 # API keys and secrets
 .env
@@ -107,3 +114,4 @@ logs/
 # Cache
 .cache/
 *.cache
+*.pdf
