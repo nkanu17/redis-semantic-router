@@ -103,6 +103,43 @@ The codebase follows a **modular pipeline architecture** where each component ca
 - **Stateless operations**: Each pipeline is self-contained with its own configuration
 - **Result persistence**: Each pipeline saves results independently for later analysis
 
+### Pipeline Flow
+
+```mermaid
+graph TB
+    A[News Articles Data] --> B{Pipeline Selection}
+    
+    B -->|LLM Path| C[LLM Classification Pipeline]
+    B -->|Semantic Path| D[Semantic Training Pipeline]
+    B -->|Compare| E[Evaluation Pipeline]
+    
+    C --> C1[Load Test Data]
+    C1 --> C2[Batch Articles]
+    C2 --> C3[LLM API Calls]
+    C3 --> C4[Classification Results]
+    C4 --> C5[Save LLM Results]
+    
+    D --> D1[Load Training Data]
+    D1 --> D2[Sample Articles per Class]
+    D2 --> D3[Generate Embeddings]
+    D3 --> D4[Store in Redis Vector Index]
+    D4 --> D5[Optimize Thresholds]
+    D5 --> F[Semantic Classification Pipeline]
+    
+    F --> F1[Load Test Data]
+    F1 --> F2[Generate Article Embeddings]
+    F2 --> F3[Vector Similarity Search]
+    F3 --> F4[Classification Results]
+    F4 --> F5[Save Semantic Results]
+    
+    C5 --> E
+    F5 --> E
+    E --> E1[Load Both Results]
+    E1 --> E2[Calculate Metrics]
+    E2 --> E3[Generate Comparison]
+    E3 --> E4[Save Comparison Report]
+```
+
 ### Classification Workflows
 
 **LLM Classifier Flow:**
