@@ -86,31 +86,36 @@ python main.py llm_classifier --config custom_config.yaml
 # Force retrain semantic router
 python main.py train_router --force-retrain
 
-# Run on training/validation data instead of test data
+# Run on training data instead of test/validation data
 python main.py llm_classifier --train-articles
 python main.py semantic_router --train-articles
 ```
 
-### Development Workflows
+## Architecture
 
-```bash
-# Development workflow - iterative testing
-python main.py train_router              # Train once
-python main.py semantic_router           # Test classification
-python main.py evaluate                 # Compare with baseline
+### Design Philosophy
 
-# Production workflow - full comparison
-python main.py llm_classifier            # Run LLM classifier
-python main.py semantic_router           # Use existing router
-python main.py evaluate                 # Generate comparison report
+The codebase follows a **modular pipeline architecture** where each component can be executed independently or composed together. This design enables:
 
-# Router management
-python main.py train_router --force-retrain  # Retrain with new data
-python main.py clear-routes              # Clear Redis data
-python main.py status                    # Check system status
+- **Independent execution**: Each classifier runs as a standalone pipeline
+- **Composable workflows**: Pipelines can be chained for comparison analysis
+- **Pluggable components**: Easy to swap classifiers or add new ones
+- **Stateless operations**: Each pipeline is self-contained with its own configuration
+- **Result persistence**: Each pipeline saves results independently for later analysis
+
+### Classification Workflows
+
+**LLM Classifier Flow:**
+```
+Articles → Batch → LLM Prompt → LiteLLM API → JSON Parse → Classification
 ```
 
-## Architecture
+**Semantic Router Flow:**
+```
+Training: Articles → Sample → Embeddings → Redis Vector Index
+Runtime:  Article → Embed → Vector Search → Classification
+                           (~50ms)         (~$0.0001/article)
+```
 
 ### Project Structure
 ```
@@ -119,12 +124,8 @@ redis_semantic_router/
 ├── pyproject.toml             # Python project configuration
 ├── config/                    # Configuration files
 │   └── pipeline_config.yaml   # Pipeline configuration
-├── data/                      # Input datasets
+├── data/                      # Input datasets (gitignored)
 │   └── bbc-news-articles-labeled/
-│       ├── train_data.csv     # Training dataset (1,117 articles)
-│       ├── validation_data.csv # Validation dataset (373 articles)
-│       ├── BBC News Train.csv # Original training data (1,490 articles)
-│       └── BBC News Test.csv  # Test dataset (735 articles)
 ├── results/                   # Generated results (gitignored)
 │   ├── llm_classifier/        # LLM classification results
 │   ├── semantic_router/       # Semantic router results
@@ -132,38 +133,10 @@ redis_semantic_router/
 └── src/                       # Source code
     ├── main.py                # CLI orchestrator
     ├── pipelines/             # Pipeline orchestration
-    │   ├── llm_cls_pipeline.py # LLM classification workflow
-    │   ├── semantic_training_pipeline.py # Router training workflow
-    │   ├── semantic_cls_pipeline.py # Router classification workflow
-    │   └── evaluation_pipeline.py # Results comparison
-    ├── llm_classifier/         # LLM classification
-    │   ├── llm_classifier.py   # LLMClassifier - async batch processor
-    │   └── prompts.py          # LLM prompts
-    ├── semantic_router/        # Vector-based classification
-    │   ├── redis_router.py     # Redis semantic classifier
-    │   └── route_builder.py    # Route building utilities
-    ├── shared/                 # Common utilities
-    │   ├── base_classifier.py  # Abstract classifier interface
-    │   ├── data_types.py       # Shared data structures
-    │   ├── metrics.py          # Performance metrics
-    │   └── results_storage.py  # Results persistence
-    └── utils/                  # Utilities
-        ├── config_loader.py    # YAML config management
-        ├── data_loader.py      # Dataset loading
-        ├── logger.py           # Simple logging
-        └── redis_client.py     # Redis connection
-```
-
-### Baseline LLM Flow
-```
-Articles → Batch → LLM Prompt → LiteLLM API → JSON Parse → Classification
-```
-
-### Semantic Router Flow
-```
-Training: Articles → Sample → Embeddings → Redis Vector Index
-Runtime:  Article → Embed → Vector Search → Classification
-                           (~50ms)         (~$0.0001/article)
+    ├── llm_classifier/        # LLM classification components
+    ├── semantic_router/       # Vector-based classification
+    ├── shared/                # Common utilities and abstractions
+    └── utils/                 # Configuration, data loading, logging
 ```
 
 ## Configuration
