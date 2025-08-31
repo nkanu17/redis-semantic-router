@@ -251,20 +251,22 @@ open http://localhost:8001
 Based on actual test results with 373 validation articles, here's the projected performance at 100,000 samples:
 
 ### LLM Classifier
-- **Total cost**: $189 (at $0.00189 per article)
-- **Total processing time**: 12.3 hours (443ms per article)
-- **Accuracy**: 96.8%
+- **Total cost**: $182 (at $0.00182 per article)
+- **Total processing time**: 7.1 hours (257ms per article)
+- **Accuracy**: 97.6%
+- **F1 macro**: 97.6%
 
 ### Semantic Router
 - **Total cost**: $0 (no API costs after training)
-- **Total processing time**: 29.9 minutes (17.9ms per article)  
+- **Total processing time**: 29.8 minutes (17.9ms per article)  
 - **Accuracy**: 94.1%
+- **F1 macro**: 94.1%
 
 ### Trade-offs at Scale
-- **Cost savings**: 100% ($189 → $0)
-- **Speed improvement**: 24.7x faster (12.3 hours → 29.9 minutes)
-- **Accuracy trade-off**: 2.7% accuracy loss (96.8% → 94.1%)
-- **F1 macro trade-off**: 2.6% F1 loss (96.7% → 94.1%)
+- **Cost savings**: 100% ($182 → $0)
+- **Speed improvement**: 14.4x faster (7.1 hours → 29.8 minutes)
+- **Accuracy trade-off**: 3.5% accuracy loss (97.6% → 94.1%)
+- **F1 macro trade-off**: 3.5% F1 loss (97.6% → 94.1%)
 
 The semantic router provides massive operational benefits for high-volume classification scenarios, with the accuracy trade-off often acceptable for real-time applications.
 
