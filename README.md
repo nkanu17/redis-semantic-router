@@ -110,8 +110,8 @@ graph TB
     A[News Articles Data] --> B{Pipeline Selection}
     
     B -->|LLM Classification| C[LLM Classification Pipeline]
-    B -->|Semantic Training| D[Semantic Training Pipeline]
-    B -->|Semantic Classification| F[Semantic Classification Pipeline]
+    B -->|SemanticRoute Registration (Train)| D[SemanticRoute Registration Pipeline]
+    B -->|SemanticRoute Matching (Classify)| F[SemanticRoute Matching Pipeline]
     B -->|Compare Results| E[Evaluation Pipeline]
     
     subgraph "LLM Path"
@@ -123,7 +123,7 @@ graph TB
     end
     
     subgraph "Semantic Router Path"
-        subgraph "Phase 1: Training"
+        subgraph "Phase 1: Route Registration (Train)"
             D --> D1[Load Training Data]
             D1 --> D2[Sample Articles per Class]
             D2 --> D3[Generate Embeddings]
@@ -131,7 +131,7 @@ graph TB
             D4 --> D5[Optimize Thresholds]
         end
         
-        subgraph "Phase 2: Classification"
+        subgraph "Phase 2: Route Matching (Classify)"
             F --> F1[Load Test Data]
             F1 --> F2[Generate Article Embeddings]
             F2 --> F3[Fetch Existing Router]
