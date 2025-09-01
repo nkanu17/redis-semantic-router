@@ -110,8 +110,8 @@ graph TB
     A[News Articles Data] --> B{Pipeline Selection}
     
     B -->|LLM Classification| C[LLM Classification Pipeline]
-    B -->|SemanticRouter route creation (Training) Pipeline| D[]
-    B -->|SemanticRouter Classification Pipeline| F[]
+    B -->|Semantic Training| D[Semantic Training Pipeline]
+    B -->|Semantic Classification| F[Semantic Classification Pipeline]
     B -->|Compare Results| E[Evaluation Pipeline]
     
     subgraph "LLM Path"
@@ -123,15 +123,15 @@ graph TB
     end
     
     subgraph "Semantic Router Path"
-        subgraph "Phase 1: Training/Category Route Creation"
+        subgraph "Phase 1: Training"
             D --> D1[Load Training Data]
             D1 --> D2[Sample Articles per Class]
             D2 --> D3[Generate Embeddings]
-            D3 --> D4[Create Router and store in Redis Vector Index]
+            D3 --> D4[Store in Redis Vector Index]
             D4 --> D5[Optimize Thresholds]
         end
         
-        subgraph "Phase 2:SemanticRouter Vector Search (Classification)"
+        subgraph "Phase 2: Classification"
             F --> F1[Load Test Data]
             F1 --> F2[Generate Article Embeddings]
             F2 --> F3[Fetch Existing Router]
@@ -145,7 +145,7 @@ graph TB
     
     subgraph "Comparison"
         C5 --> E
-        F5 --> E
+        F6 --> E
         E --> E1[Load Both Results]
         E1 --> E2[Calculate Metrics]
         E2 --> E3[Generate Comparison]
