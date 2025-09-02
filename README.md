@@ -1,6 +1,8 @@
-# News Classification: Baseline LLM vs Redis Semantic Router
+# News Classification: LLM vs Redis Semantic Router
 
-A proof-of-concept comparing LLM-based news classification with Redis semantic routing for improved latency and cost efficiency.
+**Compare LLM-based text classification with vector-based semantic routing for massive cost savings and speed improvements.**
+
+This proof-of-concept demonstrates how Redis semantic routing can replace expensive LLM API calls for news classification, achieving **cost savings** and **speed improvements** with only a minor **accuracy trade-off**.
 
 ## Overview
 
@@ -14,37 +16,49 @@ Dataset: Pre-split BBC News articles:
 - **Validation**: 373 articles (`validation_data.csv`)
 - **Test**: 735 articles (`BBC News Test.csv`)
 
-## Setup
+## Prerequisites
 
-### Prerequisites
 - **Python 3.12+**
 - **[uv](https://docs.astral.sh/uv/)** (Python package manager)
 - **Docker** (for Redis)
 
-### 1. Install Dependencies
+## Installation
+
+### 1. Clone and Install Dependencies
 ```bash
-# Install all Python dependencies
+git clone <repository-url>
+cd redis_semantic_router
 uv sync
 ```
 
 ### 2. Start Redis Stack
 ```bash
-# Start RedisVL with extensions
+# Start Redis with vector search extensions
 docker run -d --name redis-stack -p 6379:6379 -p 8001:8001 redis/redis-stack:latest
 
 # Verify Redis is running
 docker ps | grep redis-stack
 ```
 
-### 3. Verify Setup
+### 3. Setup Environment Variables
+```bash
+# Required for LLM classification
+export ANTHROPIC_API_KEY="your_claude_api_key_here"
+
+# Optional for OpenAI embeddings
+export OPENAI_API_KEY="your_openai_api_key_here"
+```
+
+### 4. Verify Installation
 ```bash
 # Test Redis connection
 docker exec -it redis-stack redis-cli ping
-# Should return: PONG
+# Expected: PONG
 
-# Check dataset is in place
-ls bbc-news-articles-labeled/
-# Should show: BBC News Train.csv, BBC News Test.csv (split files auto-created)
+# Check system status
+cd src
+python main.py status
+# Expected: System status with Redis connection confirmed
 ```
 
 ## Usage
@@ -60,36 +74,68 @@ cd src
 ```bash
 # Check system status
 python main.py status
+# Expected: Shows Redis connection, datasets, and router status
 
-# Train semantic router (one-time setup)
-python main.py train_router
+# Build semantic routes (one-time setup)
+python main.py build_semantic_routes
+# Expected: Creates vector embeddings for categories and stores routes in Redis
 
 # Run baseline LLM classification
-python main.py llm_classifier
+python main.py llm_cls
+# Expected: Processes validation articles with Claude API
 
-# Run semantic router classification
-python main.py semantic_router
+# Run semantic classification
+python main.py semantic_cls
+# Expected: Fast vector similarity search as an alternative for llm classification
 
 # Compare results from both approaches
 python main.py evaluate
+# Expected: Generates detailed comparison metrics and saves report
 
 # Clear all routes from Redis
 python main.py clear-routes
+# Expected: Removes all semantic routes from Redis
 ```
 
 ### Advanced Usage
 
 ```bash
 # Use custom config file
-python main.py llm_classifier --config custom_config.yaml
+python main.py llm_cls --config custom_config.yaml
 
-# Force retrain semantic router
-python main.py train_router --force-retrain
+# Force rebuild semantic routes
+python main.py build_semantic_routes --force-retrain
 
 # Run on training data instead of test/validation data
-python main.py llm_classifier --train-articles
-python main.py semantic_router --train-articles
+python main.py llm_cls --train-articles
+python main.py semantic_cls --train-articles
 ```
+
+## Embedding Vectorizers
+
+**Note:** This is a Proof of Concept (POC). Due to time constraints, only a subset of RedisVL's vectorizer capabilities have been implemented.
+
+### Implemented Vectorizers
+
+This project implements support for two core embedding providers:
+
+**HuggingFace Models (Free)**
+- `sentence-transformers/all-MiniLM-L6-v2` (384 dimensions)
+- No API costs, runs locally
+
+**OpenAI Models (Paid)**  
+- `text-embedding-3-small` (1536 dimensions) - $0.00002/1K tokens
+- Requires OPENAI_API_KEY environment variable
+- Automatic cost tracking included
+
+### Additional RedisVL Vectorizers (Not Implemented)
+
+RedisVL supports many other vectorizers that could be added in future versions:
+- **Cohere**: `CohereTextVectorizer`
+- **VertexAI**: `VertexAITextVectorizer` 
+- **Azure OpenAI**: `AzureOpenAITextVectorizer`
+- **Mistral**: `MistralAITextVectorizer`
+- **Custom**: Build your own vectorizer implementation
 
 ## Architecture
 
@@ -189,10 +235,80 @@ redis_semantic_router/
     └── utils/                 # Configuration, data loading, logging
 ```
 
+## Embedding Vectorizers
+
+**Note:** This is a Proof of Concept (POC). Due to time constraints, only a subset of RedisVL's vectorizer capabilities have been implemented.
+
+### Implemented Vectorizers
+
+This project implements support for two core embedding providers:
+
+**HuggingFace Models (Free)**
+- `sentence-transformers/all-MiniLM-L6-v2` (384 dimensions)
+- No API costs, runs locally
+
+**OpenAI Models (Paid)**  
+- `text-embedding-3-small` (1536 dimensions) - $0.00002/1K tokens
+- Requires OPENAI_API_KEY environment variable
+- Automatic cost tracking included
+
+### Additional RedisVL Vectorizers (Not Implemented)
+
+RedisVL supports many other vectorizers that could be added in future versions:
+- **Cohere**: `CohereTextVectorizer`
+- **VertexAI**: `VertexAITextVectorizer` 
+- **Azure OpenAI**: `AzureOpenAITextVectorizer`
+- **Mistral**: `MistralAITextVectorizer`
+- **Custom**: Build your own vectorizer implementation
+
 ## Configuration
 
-Edit `config/pipeline_config.yaml`:
+### Basic Configuration
+
+The main configuration file is `config/pipeline_config.yaml`. Key settings:
+
+```yaml
+# Choose embedding provider (HuggingFace or OpenAI)
+semantic_router:
+  vectorizer:
+    type: "huggingface"  # Options: "huggingface" or "openai"
+    model: "sentence-transformers/all-MiniLM-L6-v2"
+    track_usage: true
+```
+
+### Embedding Provider Options
+
+**HuggingFace (Default - Free)**
+```yaml
+semantic_router:
+  vectorizer:
+    type: "huggingface"
+    model: "sentence-transformers/all-MiniLM-L6-v2"
+```
+
+**OpenAI (Paid - Better Performance)**
+```yaml
+semantic_router:
+  vectorizer:
+    type: "openai"
+    model: "text-embedding-3-small"
+    api_key_env: "OPENAI_API_KEY"
+    track_usage: true
+```
+
+After changing vectorizer type, retrain the router:
+```bash
+python main.py build_semantic_routes --force-retrain
+```
+
+> **Note:** Training always creates a fresh router with `overwrite=True`, replacing any existing router with the same name. The system automatically handles creating new routers vs loading existing ones during classification.
+
+### Advanced Configuration
+
 > **Note:** Classification categories are defined in the `NewsCategory` enum in `shared/data_types.py`. To add new categories, update this enum rather than configuration files.
+
+<details>
+<summary>Full configuration options</summary>
 
 ```yaml
 # Dataset settings  
@@ -213,15 +329,45 @@ llm_classifier:
 
 # Redis semantic router settings
 semantic_router:
-  embedding_model: "sentence-transformers/all-MiniLM-L6-v2"
+  vectorizer:
+    type: "huggingface"  # Options: "huggingface" or "openai"
+    model: "sentence-transformers/all-MiniLM-L6-v2"
+    track_usage: true
+  
   router_name: "news-classification-router"
   route_config:
     samples_per_class: 100
     initial_threshold: 0.6
+    max_text_length: 8000  # Legacy parameter - will be removed
     optimize_thresholds: true
   save_results: true
   results_dir: "results/semantic_router"
 ```
+</details>
+
+## Performance Analysis at Scale
+
+Based on actual test results with 360 validation articles, here's the projected performance at 100,000 samples:
+
+### LLM Classifier (Claude)
+- **Total cost**: $182 (at $0.00182 per article)
+- **Total processing time**: 7.1 hours (257ms per article)
+- **Accuracy**: 97.6%
+- **F1 macro**: 97.6%
+
+### Semantic Router (HuggingFace embeddings)
+- **Total cost**: $0 (no API costs after training)
+- **Total processing time**: 21.2 minutes (12.7ms per article based on 7.63s for 360 articles)  
+- **Accuracy**: 92.8%
+- **F1 macro**: 92.8%
+
+### Trade-offs at Scale
+- **Cost savings**: 100% ($182 → $0)
+- **Speed improvement**: 20.1x faster (7.1 hours → 21.2 minutes)
+- **Accuracy trade-off**: 4.8% accuracy loss (97.6% → 92.8%)
+- **F1 macro trade-off**: 4.8% F1 loss (97.6% → 92.8%)
+
+The semantic router provides massive operational benefits for high-volume classification scenarios, with the accuracy trade-off often acceptable for real-time applications.
 
 ## Results
 
@@ -245,31 +391,6 @@ python main.py status
 # Redis web interface
 open http://localhost:8001
 ```
-
-
-## Performance Analysis at Scale
-
-Based on actual test results with 373 validation articles, here's the projected performance at 100,000 samples:
-
-### LLM Classifier
-- **Total cost**: $182 (at $0.00182 per article)
-- **Total processing time**: 7.1 hours (257ms per article)
-- **Accuracy**: 97.6%
-- **F1 macro**: 97.6%
-
-### Semantic Router
-- **Total cost**: $0 (no API costs after training)
-- **Total processing time**: 29.8 minutes (17.9ms per article)  
-- **Accuracy**: 94.1%
-- **F1 macro**: 94.1%
-
-### Trade-offs at Scale
-- **Cost savings**: 100% ($182 → $0)
-- **Speed improvement**: 14.4x faster (7.1 hours → 29.8 minutes)
-- **Accuracy trade-off**: 3.5% accuracy loss (97.6% → 94.1%)
-- **F1 macro trade-off**: 3.5% F1 loss (97.6% → 94.1%)
-
-The semantic router provides massive operational benefits for high-volume classification scenarios, with the accuracy trade-off often acceptable for real-time applications.
 
 ## Troubleshooting
 

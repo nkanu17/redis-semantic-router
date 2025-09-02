@@ -2,11 +2,11 @@
 
 # LLM Classifier Configuration
 llm_classifier:
-  model_name: "claude-sonnet-4-20250514"
-  batch_size: 50
+  model_name: "claude-3-5-haiku-latest"
+  batch_size: 5
   max_concurrent: 40
   temperature: 0
-  max_tokens: 50000
+  max_tokens: 4096
   max_retries: 3
   save_results: true
   results_dir: "../results/llm_classifier"
@@ -22,13 +22,25 @@ semantic_router:
     retry_on_timeout: true
     decode_responses: true
   
-  embedding_model: "sentence-transformers/all-MiniLM-L6-v2"
-  # TODO: remove max_text_length?
+  # Vectorizer configuration - choose between HuggingFace or OpenAI
+  vectorizer:
+    type: "huggingface"
+    model: "sentence-transformers/all-MiniLM-L6-v2"
+#    type: "openai"  # Options: "huggingface" or "openai"
+#    model: "text-embedding-3-small" #"sentence-transformers/all-MiniLM-L6-v2"
+    # For OpenAI, use models like: "text-embedding-3-small", "text-embedding-3-large"
+    api_key_env: "PERSONAL_OPENAI_API_KEY"  # Environment variable for OpenAI API key
+    track_usage: true  # Track cost/token usage for OpenAI
+  
+  # TODO Legacy support - will be converted to vectorizer config automatically
+  # embedding_model: "sentence-transformers/all-MiniLM-L6-v2"
+  # TODO: Remove max_text_length entirely - legacy parameter for older embedding models
   route_config:
-    samples_per_class: 100
+    samples_per_class: 500
     initial_threshold: 0.6
-    max_text_length: 3000
-    optimize_thresholds: true
+    max_text_length: 8000  # TODO: Remove truncation entirely - modern embedding models handle full text better
+    optimize_thresholds: true #
+    overwrite_existing: true  # Whether to overwrite existing router during training
     threshold_overrides:
       sport: 0.57
       business: 0.57
@@ -36,7 +48,7 @@ semantic_router:
       tech: 0.57
       entertainment: 0.57
 
-  router_name: "news-classification-router"
+  router_name: "news-classification-router-2"
   save_results: true
   results_dir: "../results/semantic_router"
 

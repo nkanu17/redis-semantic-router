@@ -18,5 +18,7 @@ dependencies = [
     "redis-retrieval-optimizer==0.4.1",
     "redis>=5.0.0",
     "redisvl>=0.3.0",
-    "pyyaml>=6.0"
+    "pyyaml>=6.0",
+    "openai>=1.0.0",
+    "tiktoken>=0.5.0"
 ]
