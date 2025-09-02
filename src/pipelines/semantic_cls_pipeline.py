@@ -94,19 +94,25 @@ class SemanticClassificationPipeline:
         # Create classifier
         classifier = RedisSemanticClassifier(
             redis_config=redis_config,
-            embedding_model=self.config.semantic_router.embedding_model,
+            vectorizer_config=self.config.semantic_router.vectorizer,
             samples_per_class=self.config.semantic_router.route_config.samples_per_class,
             initial_threshold=self.config.semantic_router.route_config.initial_threshold,
             router_name=self.config.semantic_router.router_name,
             save_results=self.config.semantic_router.save_results,
             results_dir=self.config.semantic_router.results_dir,
+            pipeline_config={
+                "semantic_router": self.config_loader.raw_config.get(
+                    "semantic_router", {}
+                ),
+                "data": self.config_loader.raw_config.get("data", {}),
+            },
         )
 
         # Load existing router
         if not classifier.load_existing_router():
             raise RuntimeError(
                 f"No trained router '{self.config.semantic_router.router_name}' found in Redis. "
-                "Run 'python main.py train_router' first."
+                "Run 'python main.py build_semantic_routes' first."
             )
 
         # Apply threshold overrides if provided

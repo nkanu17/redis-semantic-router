@@ -37,6 +37,16 @@ class RedisConnectionConfig:
 
 
 @dataclass
+class VectorizerConfig:
+    """Configuration for embedding vectorizer."""
+
+    type: str  # "huggingface" or "openai"
+    model: str
+    api_key_env: str | None = None
+    track_usage: bool = True
+
+
+@dataclass
 class RouteConfig:
     """Configuration for route building."""
 
@@ -45,6 +55,7 @@ class RouteConfig:
     max_text_length: int
     optimize_thresholds: bool
     threshold_overrides: dict[str, float] | None = None
+    overwrite_existing: bool = True
 
 
 @dataclass
@@ -52,11 +63,17 @@ class SemanticRouterConfig:
     """Configuration for semantic router."""
 
     redis: RedisConnectionConfig
-    embedding_model: str
+    vectorizer: VectorizerConfig
     route_config: RouteConfig
     router_name: str
     save_results: bool
     results_dir: str
+
+    # Backward compatibility
+    @property
+    def embedding_model(self) -> str:
+        """Get embedding model for backward compatibility."""
+        return self.vectorizer.model
 
 
 @dataclass
@@ -99,6 +116,7 @@ class ConfigLoader:
         """
         self.config_path = Path(config_path)
         self.logger = get_logger(f"{__name__}.ConfigLoader")
+        self.raw_config: dict[str, Any] | None = None
 
     def load_config(self) -> PipelineConfig:
         """
@@ -120,6 +138,9 @@ class ConfigLoader:
                 raw_config = yaml.safe_load(f)
 
             self.logger.info(f"Loaded configuration from {self.config_path}")
+
+            # Store raw config for reproducibility
+            self.raw_config = raw_config
 
             # Parse and validate configuration sections
             config = self._parse_config(raw_config)
@@ -152,8 +173,7 @@ class ConfigLoader:
 
         # Parse semantic router config
         semantic_raw = raw_config.get("semantic_router", {})
-        # TODO: remove max text length
-        # TODO: check samples per class
+
         redis_raw = semantic_raw.get("redis", {})
         redis_config = RedisConnectionConfig(
             host=redis_raw.get("host", "localhost"),
@@ -165,6 +185,32 @@ class ConfigLoader:
             decode_responses=redis_raw.get("decode_responses", True),
         )
 
+        # Parse vectorizer config with backward compatibility
+        vectorizer_raw = semantic_raw.get("vectorizer", {})
+        if not vectorizer_raw and "embedding_model" in semantic_raw:
+            # Backward compatibility: convert old embedding_model to new format
+            embedding_model = semantic_raw["embedding_model"]
+            if embedding_model.startswith("text-embedding"):
+                vectorizer_config = VectorizerConfig(
+                    type="openai",
+                    model=embedding_model,
+                    api_key_env="OPENAI_API_KEY",
+                    track_usage=True,
+                )
+            else:
+                vectorizer_config = VectorizerConfig(
+                    type="huggingface", model=embedding_model, track_usage=False
+                )
+        else:
+            vectorizer_config = VectorizerConfig(
+                type=vectorizer_raw.get("type", "huggingface"),
+                model=vectorizer_raw.get(
+                    "model", "sentence-transformers/all-MiniLM-L6-v2"
+                ),
+                api_key_env=vectorizer_raw.get("api_key_env", "OPENAI_API_KEY"),
+                track_usage=vectorizer_raw.get("track_usage", True),
+            )
+
         route_raw = semantic_raw.get("route_config", {})
         route_config = RouteConfig(
             samples_per_class=route_raw.get("samples_per_class", 15),
@@ -172,13 +218,12 @@ class ConfigLoader:
             max_text_length=route_raw.get("max_text_length", 500),
             optimize_thresholds=route_raw.get("optimize_thresholds", True),
             threshold_overrides=route_raw.get("threshold_overrides"),
+            overwrite_existing=route_raw.get("overwrite_existing", True),
         )
 
         semantic_router = SemanticRouterConfig(
             redis=redis_config,
-            embedding_model=semantic_raw.get(
-                "embedding_model", "sentence-transformers/all-MiniLM-L6-v2"
-            ),
+            vectorizer=vectorizer_config,
             route_config=route_config,
             router_name=semantic_raw.get("router_name", "news-classification-router"),
             save_results=semantic_raw.get("save_results", True),

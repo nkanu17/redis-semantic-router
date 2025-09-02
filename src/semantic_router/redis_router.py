@@ -18,6 +18,8 @@ from shared.data_types import (
 )
 from shared.metrics import calculate_batch_metrics
 from shared.results_storage import ResultsStorage
+from utils.config_loader import VectorizerConfig
+from utils.cost_calculator import EmbeddingCostCalculator
 from utils.logger import get_logger
 from utils.redis_client import RedisConfig
 
@@ -28,18 +30,20 @@ class RedisSemanticClassifier(BaseClassifier):
     def __init__(
         self,
         redis_config: RedisConfig,
-        embedding_model: str = "sentence-transformers/all-MiniLM-L6-v2",
+        vectorizer_config: VectorizerConfig,
         samples_per_class: int = 15,
         initial_threshold: float = 0.75,
         router_name: str = "news-classification-router",
         save_results: bool = True,
         results_dir: str = "redis_cls_results",
+        pipeline_config: dict[str, Any] | None = None,
+        overwrite_existing: bool = True,
     ):
         """Initialize Redis semantic classifier.
 
         Args:
             redis_config: Redis connection configuration
-            embedding_model: HuggingFace embedding model
+            vectorizer_config: Vectorizer configuration (HF or OpenAI)
             samples_per_class: Number of reference samples per class
             initial_threshold: Initial distance threshold for matching
             router_name: Name for the semantic router
@@ -49,15 +53,24 @@ class RedisSemanticClassifier(BaseClassifier):
         super().__init__(save_results=save_results, results_dir=results_dir)
 
         self.redis_config = redis_config
-        self.embedding_model = embedding_model
+        self.vectorizer_config = vectorizer_config
         self.samples_per_class = samples_per_class
         self.initial_threshold = initial_threshold
         self.router_name = router_name
+        self.overwrite_existing = overwrite_existing
         self.logger = get_logger(f"{__name__}.RedisSemanticClassifier")
+
+        # Cost tracking for classification phase
+        self.classification_cost = 0.0
+        self.classification_tokens = 0
+
+        # Cost tracking for training phase
+        self.training_cost = 0.0
+        self.training_tokens = 0
 
         # Initialize results storage
         if self.save_results:
-            self.results_storage = ResultsStorage(results_dir)
+            self.results_storage = ResultsStorage(results_dir, pipeline_config)
         else:
             self.results_storage = None
 
@@ -65,15 +78,12 @@ class RedisSemanticClassifier(BaseClassifier):
         self.router: SemanticRouter | None = None
         self.is_trained = False
 
-    async def train(
-        self, train_data: list[NewsArticleWithLabel], force_retrain: bool = False
-    ) -> None:
+    async def train(self, train_data: list[NewsArticleWithLabel]) -> None:
         """
         Train the semantic router with training data.
 
         Args:
             train_data: List of training articles
-            force_retrain: Force retraining even if router exists
         """
         self.logger.info(f"Training semantic router with {len(train_data)} articles")
 
@@ -82,24 +92,28 @@ class RedisSemanticClassifier(BaseClassifier):
             if not self.redis_config.health_check():
                 raise ConnectionError("Redis connection failed")
 
-            # Check for existing router unless force retraining
-            if not force_retrain and self.load_existing_router():
-                self.logger.info("Using existing router, skipping training")
-                return
+            # Skip existing router check during training since we always overwrite anyway
+            # Only check for existing router during classification, not training
 
             # Build routes from training data
             route_builder = RouteBuilder(
-                embedding_model=self.embedding_model,
+                vectorizer_config=self.vectorizer_config,
                 samples_per_class=self.samples_per_class,
                 initial_threshold=self.initial_threshold,
             )
 
-            # Create semantic router (with overwrite=True to replace existing)
+            # Create semantic router
             self.router = route_builder.create_semantic_router(
                 redis_url=self.redis_config.get_url(),
                 train_data=train_data,
                 router_name=self.router_name,
+                overwrite=self.overwrite_existing,
             )
+
+            # Get training cost information from route builder
+            cost_info = route_builder.get_cost_info()
+            self.training_cost = cost_info["total_embedding_cost"]
+            self.training_tokens = cost_info["total_tokens"]
 
             # Get route summary for logging
             routes = route_builder.build_routes(train_data)
@@ -137,6 +151,17 @@ class RedisSemanticClassifier(BaseClassifier):
             raise RuntimeError("Router must be trained before classification")
 
         try:
+            # Track classification cost for OpenAI
+            if (
+                self.vectorizer_config.type.lower() == "openai"
+                and self.vectorizer_config.track_usage
+            ):
+                tokens, cost = EmbeddingCostCalculator.calculate_openai_embedding_cost(
+                    article.text, self.vectorizer_config.model
+                )
+                self.classification_tokens += tokens
+                self.classification_cost += cost
+
             # Route the article text
             route_match = self.router(article.text)
 
@@ -214,15 +239,15 @@ class RedisSemanticClassifier(BaseClassifier):
 
             end_time = time.time()
 
-            # Create batch result
+            # Create batch result with embedding costs
             batch_result = BatchResult(
                 request_id="redis_classification",
                 classified_articles=classified_articles,
                 total_latency=end_time - start_time,
-                total_cost=0.0,  # Redis classification has no API cost
+                total_cost=self.classification_cost,
                 prompt_tokens=0,  # No LLM tokens used
                 completion_tokens=0,
-                total_tokens=0,
+                total_tokens=self.classification_tokens,
                 batch_size=len(articles),
             )
 
@@ -235,7 +260,7 @@ class RedisSemanticClassifier(BaseClassifier):
                     # Classifier configuration
                     classifier_config = {
                         "classifier_type": "redis_semantic",
-                        "embedding_model": self.embedding_model,
+                        "embedding_model": self.vectorizer_config.model,
                         "samples_per_class": self.samples_per_class,
                         "initial_threshold": self.initial_threshold,
                         "router_name": self.router_name,
@@ -290,7 +315,8 @@ class RedisSemanticClassifier(BaseClassifier):
             info = {
                 "status": "trained",
                 "router_name": self.router_name,
-                "embedding_model": self.embedding_model,
+                "vectorizer_type": self.vectorizer_config.type,
+                "embedding_model": self.vectorizer_config.model,
                 "total_routes": len(self.router.routes),
                 "routes": {},
             }
@@ -331,23 +357,10 @@ class RedisSemanticClassifier(BaseClassifier):
 
             # Optimize thresholds
             optimizer = RouterThresholdOptimizer(self.router, data)
-            optimized_thresholds = optimizer.optimize()
+            optimizer.optimize()
             # Ending thresholds: {'sport': 0.957575757575758, 'business': 0.44444444444444453, 'politics': 0.5636363636363642, 'tech': 0.77979797979798, 'entertainment': 0.5797979797979796}
-
+            # Ending thresholds: {'sport': 0.03646655696728547, 'entertainment': 0.9252525252525253, 'tech': 0.5333333333333334, 'politics': 0.4646464646464646, 'business': 0.8727272727272728}
             self.logger.info("Threshold optimization completed")
-            # TODO: This is not working.
-            if optimized_thresholds:
-                for route in self.router.routes:
-                    if route.name in optimized_thresholds:
-                        old_threshold = route.distance_threshold
-                        route.distance_threshold = optimized_thresholds[route.name]
-                        self.logger.info(
-                            f"Route '{route.name}': {old_threshold:.3f} → {route.distance_threshold:.3f}"
-                        )
-                    else:
-                        self.logger.warning(
-                            f"Route '{route.name}' not found in optimized thresholds."
-                        )
 
         except Exception as e:
             self.logger.error(f"Failed to optimize thresholds: {e}")
@@ -361,9 +374,13 @@ class RedisSemanticClassifier(BaseClassifier):
             threshold_overrides: Dictionary mapping route names to threshold values
         """
         if not self.is_trained or self.router is None:
-            raise RuntimeError("Router must be trained before applying threshold overrides")
+            raise RuntimeError(
+                "Router must be trained before applying threshold overrides"
+            )
 
-        self.logger.info(f"Applying threshold overrides for {len(threshold_overrides)} routes")
+        self.logger.info(
+            f"Applying threshold overrides for {len(threshold_overrides)} routes"
+        )
 
         try:
             for route in self.router.routes:
@@ -440,13 +457,18 @@ class RedisSemanticClassifier(BaseClassifier):
         """
         info = {
             "classifier_type": "redis_semantic",
-            "embedding_model": self.embedding_model,
+            "vectorizer_type": self.vectorizer_config.type,
+            "embedding_model": self.vectorizer_config.model,
             "samples_per_class": self.samples_per_class,
             "initial_threshold": self.initial_threshold,
             "router_name": self.router_name,
             "supports_training": self.supports_training(),
             "is_ready": self.is_ready(),
             "is_trained": self.is_trained,
+            "training_cost": self.training_cost,
+            "training_tokens": self.training_tokens,
+            "classification_cost": self.classification_cost,
+            "classification_tokens": self.classification_tokens,
         }
 
         if self.router is not None:

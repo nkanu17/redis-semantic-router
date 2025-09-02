@@ -24,12 +24,9 @@ class SemanticTrainingPipeline:
         self.config = self.config_loader.load_config()
         self.logger = get_logger(f"{__name__}.SemanticTrainingPipeline")
 
-    async def run(self, force_retrain: bool = False) -> dict[str, Any]:
+    async def run(self) -> dict[str, Any]:
         """
-        Run semantic router training pipeline using config settings.
-
-        Args:
-            force_retrain: Force retraining even if router exists
+        Run SemanticTouter registration ('training') pipeline using config settings.
 
         Returns:
             Training summary information
@@ -37,7 +34,7 @@ class SemanticTrainingPipeline:
 
         self.logger.info("=== SEMANTIC ROUTER TRAINING PIPELINE ===")
         self.logger.info(
-            f"Embedding model: {self.config.semantic_router.embedding_model}"
+            f"Vectorizer: {self.config.semantic_router.vectorizer.type} - {self.config.semantic_router.vectorizer.model}"
         )
         self.logger.info(
             f"Samples per class: {self.config.semantic_router.route_config.samples_per_class}"
@@ -73,16 +70,17 @@ class SemanticTrainingPipeline:
         # Create classifier
         classifier = RedisSemanticClassifier(
             redis_config=redis_config,
-            embedding_model=self.config.semantic_router.embedding_model,
+            vectorizer_config=self.config.semantic_router.vectorizer,
             samples_per_class=self.config.semantic_router.route_config.samples_per_class,
             initial_threshold=self.config.semantic_router.route_config.initial_threshold,
             router_name=self.config.semantic_router.router_name,
             save_results=False,  # Don't save during training
             results_dir=self.config.semantic_router.results_dir,
+            overwrite_existing=self.config.semantic_router.route_config.overwrite_existing,
         )
 
         # Train the router
-        await classifier.train(train_data, force_retrain=force_retrain)
+        await classifier.train(train_data)
 
         # Optimize thresholds if enabled
         if self.config.semantic_router.route_config.optimize_thresholds:
@@ -109,6 +107,12 @@ class SemanticTrainingPipeline:
         self.logger.info("=== SEMANTIC ROUTER TRAINING COMPLETED ===")
         self.logger.info(f"Router: {training_summary['router_name']}")
         self.logger.info(f"Total routes: {training_summary.get('total_routes', 'N/A')}")
-        self.logger.info(f"Embedding model: {training_summary['embedding_model']}")
+        self.logger.info(
+            f"Vectorizer: {training_summary['vectorizer_type']} - {training_summary['embedding_model']}"
+        )
+        if training_summary["vectorizer_type"] == "openai":
+            self.logger.info(
+                f"Training embedding cost: ${training_summary.get('training_cost', 0):.6f}"
+            )
 
         return training_summary

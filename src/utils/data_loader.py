@@ -84,7 +84,19 @@ class NewsDataLoader:
         # Load original training data
         df = pd.read_csv(original_path)
 
-        self.logger.info(f"Splitting {len(df)} articles (75% train, 25% validation)")
+        # Remove duplicate texts to ensure clean split
+        original_count = len(df)
+        df = df.drop_duplicates(subset=["Text"], keep="first")
+        duplicates_removed = original_count - len(df)
+
+        if duplicates_removed > 0:
+            self.logger.info(
+                f"Removed {duplicates_removed} duplicate texts from dataset"
+            )
+
+        self.logger.info(
+            f"Splitting {len(df)} unique articles (75% train, 25% validation)"
+        )
 
         # Split with stratification to maintain class balance
         train_df, val_df = train_test_split(

@@ -2,6 +2,8 @@
 
 import asyncio
 import json
+import logging
+import os
 import random
 import re
 import time
@@ -27,6 +29,9 @@ from utils.logger import (
     get_logger,
 )
 
+logging.getLogger("LiteLLM").setLevel(logging.CRITICAL)
+os.environ["LITELLM_LOG"] = "CRITICAL"
+
 
 class LLMClassifier(BaseClassifier):
     """Batch async classifier with configurable batch sizes."""
@@ -42,6 +47,7 @@ class LLMClassifier(BaseClassifier):
         results_dir: str = "cls_results",
         temperature: float = 0.0,
         max_tokens: int = 50000,
+        pipeline_config: dict[str, Any] | None = None,
     ):
         """
         Initialize batch classifier.
@@ -69,7 +75,7 @@ class LLMClassifier(BaseClassifier):
 
         # Initialize results storage if enabled
         if self.save_results:
-            self.results_storage = ResultsStorage(results_dir)
+            self.results_storage = ResultsStorage(results_dir, pipeline_config)
         else:
             self.results_storage = None
 
@@ -350,7 +356,9 @@ class LLMClassifier(BaseClassifier):
 
         # Give LiteLLM workers time to finish cleanup to prevent cancellation errors
         await asyncio.sleep(0.1)
-
+        self.logger.info(
+            f"Processed {len(articles)} articles in {len(requests)} batches of size {self.batch_size}"
+        )
         # Flatten results into single list with both successful and failed
         successful_results = []
         failed_results = []

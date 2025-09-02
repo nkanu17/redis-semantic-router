@@ -18,7 +18,7 @@ async def llm_cls(
     args: argparse.Namespace,
 ) -> tuple[list[BatchResult | FailedBatchResult], dict[str, Any]]:
     """Run baseline LLM classification."""
-    logger = get_logger("llm_classifier_cmd")
+    logger = get_logger("llm_cls")
 
     try:
         pipeline = LLMClassificationPipeline(args.config)
@@ -38,13 +38,13 @@ async def llm_cls(
         raise
 
 
-async def semantic_router_trainer(args: argparse.Namespace) -> dict[str, Any]:
-    """Train semantic router."""
-    logger = get_logger("train_cmd")
+async def build_semantic_routes(args: argparse.Namespace) -> dict[str, Any]:
+    """Build semantic routes from training data."""
+    logger = get_logger("build_routes_cmd")
 
     try:
         pipeline = SemanticTrainingPipeline(args.config)
-        summary = await pipeline.run(force_retrain=args.force_retrain)
+        summary = await pipeline.run()
 
         logger.info("Training completed successfully")
         return summary
@@ -54,11 +54,11 @@ async def semantic_router_trainer(args: argparse.Namespace) -> dict[str, Any]:
         raise
 
 
-async def semantic_router_cls(
+async def semantic_cls(
     args: argparse.Namespace,
 ) -> tuple[list[BatchResult | FailedBatchResult], dict[str, Any]]:
-    """Run semantic router classification."""
-    logger = get_logger("classify_cmd")
+    """Run semantic classification."""
+    logger = get_logger("semantic_cls_cmd")
 
     try:
         pipeline = SemanticClassificationPipeline(args.config)
@@ -92,36 +92,6 @@ def evaluate(args: argparse.Namespace) -> dict[str, Any] | None:
         raise
 
 
-# async def run_all_command(args):
-#     """Run complete end-to-end pipeline."""
-#     logger = get_logger("run_all_cmd")
-#
-#     try:
-#         logger.info("=== FULL END-TO-END PIPELINE ===")
-#
-#         # Step 1: Train semantic router
-#         logger.info("Step 1: Training semantic router...")
-#         await train_command(args)
-#
-#         # Step 2: Run semantic classification
-#         logger.info("Step 2: Running semantic classification...")
-#         await classify_command(args)
-#
-#         # Step 3: Run baseline classification
-#         logger.info("Step 3: Running baseline classification...")
-#         await baseline_command(args)
-#
-#         # Step 4: Compare results
-#         logger.info("Step 4: Evaluating results...")
-#         evaluate_command(args)
-#
-#         logger.info("=== PIPELINE COMPLETED ===")
-#
-#     except Exception as e:
-#         logger.error(f"Full pipeline failed: {e}")
-#         raise
-
-
 async def clear_routes(_: argparse.Namespace) -> None:
     """Clear all routes from Redis."""
     logger = get_logger("clear_routes_cmd")
@@ -131,7 +101,7 @@ async def clear_routes(_: argparse.Namespace) -> None:
         if redis_config.health_check():
             # Clear all semantic router data
             client = redis_config.get_client()
-            client.flushdb()
+            await client.flushdb()
             logger.info("All routes cleared from Redis")
         else:
             logger.error("Redis connection failed - cannot clear routes")
@@ -178,9 +148,9 @@ def main() -> None:
         epilog="""
         Examples:
             python main.py status                    # Check system status
-            python main.py train_router              # Train semantic routes
-            python main.py llm_classifier            # Run baseline LLM classification  
-            python main.py semantic_router           # Run cls with semantic router
+            python main.py build_semantic_routes     # Build semantic routes
+            python main.py llm_cls                   # Run baseline LLM classification  
+            python main.py semantic_cls              # Run semantic classification
             python main.py evaluate                  # Compare baseline vs semantic
             # python main.py run-all                   # Full end-to-end pipeline
             python main.py clear-routes              # Clear all routes from Redis
@@ -190,9 +160,9 @@ def main() -> None:
     parser.add_argument(
         "command",
         choices=[
-        "llm_classifier",
-            "train_router",
-            "semantic_router",
+            "llm_cls",
+            "build_semantic_routes",
+            "semantic_cls",
             "evaluate",
             # "run-all",
             "clear-routes",
@@ -223,16 +193,14 @@ def main() -> None:
     args = parser.parse_args()
 
     try:
-        if args.command == "llm_classifier":
+        if args.command == "llm_cls":
             asyncio.run(llm_cls(args))
-        elif args.command == "train_router":
-            asyncio.run(semantic_router_trainer(args))
-        elif args.command == "semantic_router":
-            asyncio.run(semantic_router_cls(args))
+        elif args.command == "build_semantic_routes":
+            asyncio.run(build_semantic_routes(args))
+        elif args.command == "semantic_cls":
+            asyncio.run(semantic_cls(args))
         elif args.command == "evaluate":
             evaluate(args)
-        # elif args.command == "run-all":
-        #     asyncio.run(run_all_command(args))
         elif args.command == "clear-routes":
             asyncio.run(clear_routes(args))
         elif args.command == "status":

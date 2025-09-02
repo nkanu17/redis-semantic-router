@@ -6,9 +6,11 @@ from collections import defaultdict
 from typing import Any
 
 from redisvl.extensions.router import Route, SemanticRouter
-from redisvl.utils.vectorize import HFTextVectorizer
+from redisvl.utils.vectorize import HFTextVectorizer, OpenAITextVectorizer
 
 from shared.data_types import NewsArticleWithLabel
+from utils.config_loader import VectorizerConfig
+from utils.cost_calculator import EmbeddingCostCalculator
 from utils.logger import get_logger
 
 # Disable tokenizer parallelism to prevent deadlocks with async/multiprocessing
@@ -20,7 +22,7 @@ class RouteBuilder:
 
     def __init__(
         self,
-        embedding_model: str = "sentence-transformers/all-MiniLM-L6-v2",
+        vectorizer_config: VectorizerConfig,
         samples_per_class: int = 15,
         initial_threshold: float = 0.75,
         max_text_length: int = 500,
@@ -29,21 +31,28 @@ class RouteBuilder:
         Initialize route builder.
 
         Args:
-            embedding_model: HuggingFace embedding model name
+            vectorizer_config: Vectorizer configuration
             samples_per_class: Number of reference samples per category
             initial_threshold: Initial distance threshold for routes
             max_text_length: Maximum text length for route references
         """
-        self.embedding_model = embedding_model
+        self.vectorizer_config = vectorizer_config
         self.samples_per_class = samples_per_class
         self.initial_threshold = initial_threshold
         self.max_text_length = max_text_length
         self.logger = get_logger(f"{__name__}.RouteBuilder")
 
+        # Cost tracking
+        self.total_embedding_cost = 0.0
+        self.total_tokens = 0
+        self.embedding_calls = 0
+
         # Initialize vectorizer
         try:
-            self.vectorizer = HFTextVectorizer(model=embedding_model)
-            self.logger.info(f"Initialized vectorizer with model: {embedding_model}")
+            self.vectorizer = self._create_vectorizer(vectorizer_config)
+            self.logger.info(
+                f"Initialized {vectorizer_config.type} vectorizer with model: {vectorizer_config.model}"
+            )
         except Exception as e:
             self.logger.error(f"Failed to initialize vectorizer: {e}")
             raise
@@ -94,12 +103,12 @@ class RouteBuilder:
         Returns:
             List of reference text strings
         """
-        # TODO: I am still not sure if truncation is necessary, research.
-        # TODO: On one hand, a sample is probably enough and could cut down noise, on the other hand
-        # TODO: If I use an llm embedding it may not make that much of a difference.
+        # TODO: Remove truncation entirely - modern embedding models handle full text better
+        # TODO: Current truncation creates training/inference mismatch and loses information
         references = []
         for article in articles:
-            # Truncate text if too long
+            # TODO: Remove this truncation logic entirely
+            # Truncate text if too long (legacy - should be removed)
             text = article.text[: self.max_text_length]
             if len(article.text) > self.max_text_length:
                 text += "..."
@@ -130,6 +139,9 @@ class RouteBuilder:
             # Prepare reference texts
             references = self._prepare_reference_texts(articles)
 
+            # Track embedding cost for route creation
+            self._track_embedding_cost(references)
+
             # Create route
             route = Route(
                 name=class_name,
@@ -151,6 +163,7 @@ class RouteBuilder:
         redis_url: str,
         train_data: list[NewsArticleWithLabel],
         router_name: str = "news-classification-router",
+        overwrite: bool = True,
     ) -> SemanticRouter:
         """Create a complete semantic router from training data.
 
@@ -164,6 +177,11 @@ class RouteBuilder:
         """
         self.logger.info(f"Creating semantic router '{router_name}'")
 
+        # Reset cost tracking for this router creation
+        self.total_embedding_cost = 0.0
+        self.total_tokens = 0
+        self.embedding_calls = 0
+
         # Build routes
         routes = self.build_routes(train_data)
 
@@ -174,7 +192,7 @@ class RouteBuilder:
                 vectorizer=self.vectorizer,
                 routes=routes,
                 redis_url=redis_url,
-                overwrite=True,
+                overwrite=overwrite,
             )
 
             self.logger.info(f"Created semantic router with {len(routes)} routes")
@@ -196,7 +214,7 @@ class RouteBuilder:
         """
         summary = {
             "total_routes": len(routes),
-            "embedding_model": self.embedding_model,
+            "embedding_model": self.vectorizer_config.model,
             "samples_per_class": self.samples_per_class,
             "initial_threshold": self.initial_threshold,
             "routes": {},
@@ -210,3 +228,67 @@ class RouteBuilder:
             }
 
         return summary
+
+    def _create_vectorizer(
+        self, config: VectorizerConfig
+    ) -> HFTextVectorizer | OpenAITextVectorizer:
+        """
+        Create vectorizer based on configuration.
+
+        Args:
+            config: Vectorizer configuration
+
+        Returns:
+            Configured vectorizer instance
+        """
+        if config.type.lower() == "openai":
+            api_config = {}
+            if config.api_key_env:
+                api_key = os.getenv(config.api_key_env)
+                if not api_key:
+                    raise ValueError(
+                        f"OpenAI API key not found in environment variable: {config.api_key_env}"
+                    )
+                api_config["api_key"] = api_key
+
+            return OpenAITextVectorizer(model=config.model, api_config=api_config)
+        elif config.type.lower() == "huggingface":
+            return HFTextVectorizer(model=config.model)
+        else:
+            raise ValueError(f"Unsupported vectorizer type: {config.type}")
+
+    def _track_embedding_cost(self, texts: list[str]) -> None:
+        """
+        Track embedding cost for OpenAI models.
+
+        Args:
+            texts: List of texts being embedded
+        """
+        if (
+            self.vectorizer_config.type.lower() == "openai"
+            and self.vectorizer_config.track_usage
+        ):
+            cost_info = EmbeddingCostCalculator.calculate_batch_embedding_cost(
+                texts, self.vectorizer_config.model
+            )
+            self.total_tokens += cost_info["total_tokens"]
+            self.total_embedding_cost += cost_info["total_cost"]
+            self.embedding_calls += len(texts)
+
+    def get_cost_info(self) -> dict[str, Any]:
+        """
+        Get cost and usage information.
+
+        Returns:
+            Dictionary with cost breakdown
+        """
+        return {
+            "vectorizer_type": self.vectorizer_config.type,
+            "model": self.vectorizer_config.model,
+            "total_embedding_calls": self.embedding_calls,
+            "total_tokens": self.total_tokens,
+            "total_embedding_cost": self.total_embedding_cost,
+            "avg_cost_per_call": self.total_embedding_cost / self.embedding_calls
+            if self.embedding_calls > 0
+            else 0.0,
+        }

@@ -91,6 +91,12 @@ class LLMClassificationPipeline:
             results_dir=self.config.llm_classifier.results_dir,
             temperature=self.config.llm_classifier.temperature,
             max_tokens=self.config.llm_classifier.max_tokens,
+            pipeline_config={
+                "llm_classifier": self.config_loader.raw_config.get(
+                    "llm_classifier", {}
+                ),
+                "data": self.config_loader.raw_config.get("data", {}),
+            },
         )
 
         # Run classification

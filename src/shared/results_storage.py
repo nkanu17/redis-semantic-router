@@ -14,14 +14,20 @@ from utils.logger import get_logger
 class ResultsStorage:
     """Utility class for saving classification results to disk."""
 
-    def __init__(self, base_dir: str = "cls_results"):
+    def __init__(
+        self,
+        base_dir: str = "cls_results",
+        pipeline_config: dict[str, Any] | None = None,
+    ):
         """
         Initialize results storage.
 
         Args:
             base_dir: Base directory for storing results
+            pipeline_config: Full pipeline configuration for reproducibility
         """
         self.base_dir = Path(base_dir)
+        self.pipeline_config = pipeline_config or {}
         self.logger = get_logger(f"{__name__}.ResultsStorage")
 
         # Ensure base directory exists
@@ -161,6 +167,7 @@ class ResultsStorage:
                 "run_id": run_id,
                 "timestamp": datetime.now().isoformat(),
                 "classifier_config": classifier_config or {},
+                "full_pipeline_config": self.pipeline_config,
                 "files_generated": {
                     "metrics": "metrics.json",
                     "classifications": "classifications.csv",
