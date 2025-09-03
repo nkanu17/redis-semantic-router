@@ -18,6 +18,7 @@ Dataset: Pre-split BBC News articles:
 
 The dataset should be placed in data/bbc-news-articles-labeled/ with the following structure:
 data/bbc-news-articles-labeled/
+``````
 ├── train_data.csv      # 1,117 training articles
 ├── validation_data.csv # 360 validation articles  
 └── BBC News Test.csv   # 735 test articles
@@ -113,6 +114,32 @@ uv run python main.py llm_cls --config custom_config.yaml
 uv run python main.py llm_cls --train-articles
 uv run python main.py semantic_cls --train-articles
 ```
+
+## Embedding Vectorizers
+
+**Note:** This is a Proof of Concept (POC). Due to time constraints, only a subset of RedisVL's vectorizer capabilities have been implemented.
+
+### Implemented Vectorizers
+
+This project implements support for two core embedding providers:
+
+**HuggingFace Models (Free)**
+- `sentence-transformers/all-MiniLM-L6-v2` (384 dimensions)
+- No API costs, runs locally
+
+**OpenAI Models (Paid)**  
+- `text-embedding-3-small` (1536 dimensions) - $0.00002/1K tokens
+- Requires OPENAI_API_KEY environment variable
+- Automatic cost tracking included
+
+### Additional RedisVL Vectorizers (Not Implemented)
+
+RedisVL supports many other vectorizers that could be added in future versions:
+- **Cohere**: `CohereTextVectorizer`
+- **VertexAI**: `VertexAITextVectorizer` 
+- **Azure OpenAI**: `AzureOpenAITextVectorizer`
+- **Mistral**: `MistralAITextVectorizer`
+- **Custom**: Build your own vectorizer implementation
 
 ## Architecture
 
