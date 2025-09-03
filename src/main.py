@@ -178,11 +178,6 @@ def main() -> None:
         help="Path to configuration file",
     )
 
-    parser.add_argument(
-        "--force-retrain",
-        action="store_true",
-        help="Force retraining even if routes exist",
-    )
 
     parser.add_argument(
         "--train-articles",

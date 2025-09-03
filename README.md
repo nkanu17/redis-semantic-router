@@ -103,9 +103,6 @@ uv run python main.py clear-routes
 # Use custom config file
 uv run python main.py llm_cls --config custom_config.yaml
 
-# Force rebuild semantic routes
-uv run python main.py build_semantic_routes --force-retrain
-
 # Run on training data instead of test/validation data
 uv run python main.py llm_cls --train-articles
 uv run python main.py semantic_cls --train-articles

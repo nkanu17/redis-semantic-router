@@ -4,9 +4,9 @@
 llm_classifier:
   model_name: "claude-3-5-haiku-latest"
   batch_size: 5
-  max_concurrent: 100
+  max_concurrent: 40
   temperature: 0
-  max_tokens: 4000
+  max_tokens: 4096
   max_retries: 3
   save_results: true
   results_dir: "../results/llm_classifier"
@@ -24,10 +24,10 @@ semantic_router:
   
   # Vectorizer configuration - choose between HuggingFace or OpenAI
   vectorizer:
-    type: "huggingface"
-    model: "sentence-transformers/all-MiniLM-L6-v2"
-#    type: "openai"  # Options: "huggingface" or "openai"
-#    model: "text-embedding-3-small" #"sentence-transformers/all-MiniLM-L6-v2"
+#    type: "huggingface"
+#    model: "sentence-transformers/all-MiniLM-L6-v2"
+    type: "openai"  # Options: "huggingface" or "openai"
+    model: "text-embedding-3-small" #"sentence-transformers/all-MiniLM-L6-v2"
     # For OpenAI, use models like: "text-embedding-3-small", "text-embedding-3-large"
     api_key_env: "PERSONAL_OPENAI_API_KEY"  # Environment variable for OpenAI API key
     track_usage: true  # Track cost/token usage for OpenAI
@@ -37,18 +37,18 @@ semantic_router:
   # TODO: Remove max_text_length entirely - legacy parameter for older embedding models
   route_config:
     samples_per_class: 500
-    initial_threshold: 0.6
+    initial_threshold: 0.7
     max_text_length: 8000  # TODO: Remove truncation entirely - modern embedding models handle full text better
-    optimize_thresholds: false #
-    overwrite_existing: true  # Whether to overwrite existing router during training
+    optimize_thresholds: true #
+    overwrite_existing: false  # Whether to overwrite existing router during training
     threshold_overrides:
-      sport: 0.57
-      business: 0.57
-      politics: 0.57
-      tech: 0.57
-      entertainment: 0.57
+      sport: 0.7
+      business: 0.7
+      politics: 0.7
+      tech: 0.7
+      entertainment: 0.7
 
-  router_name: "news-classification-router-2"
+  router_name: "news-classification-router-t"
   save_results: true
   results_dir: "../results/semantic_router"
 
