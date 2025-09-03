@@ -347,25 +347,25 @@ semantic_router:
 
 ## Performance Analysis at Scale
 
-Based on actual test results with 360 validation articles, here's the projected performance at 100,000 samples:
+Based on actual test results with 360 validation articles, here's the projected performance at **100,000 articles**:
 
-### LLM Classifier (Claude)
-- **Total cost**: $182 (at $0.00182 per article)
-- **Total processing time**: 7.1 hours (257ms per article)
-- **Accuracy**: 97.6%
-- **F1 macro**: 97.6%
+### LLM Classifier (Haiku)
+- **Total cost**: $155.31 (at $0.00156 per article)
+- **Total processing time**: 166.5 hours (5.996 seconds per article)
+- **Accuracy**: 75.8%
+- **F1 macro**: 77.9%
 
 ### Semantic Router (HuggingFace embeddings)
 - **Total cost**: $0 (no API costs after training)
-- **Total processing time**: 21.2 minutes (12.7ms per article based on 7.63s for 360 articles)  
+- **Total processing time**: 34.2 minutes (20.6ms per article based on 7.4s for 360 articles)  
 - **Accuracy**: 92.8%
 - **F1 macro**: 92.8%
 
-### Trade-offs at Scale
-- **Cost savings**: 100% ($182 → $0)
-- **Speed improvement**: 20.1x faster (7.1 hours → 21.2 minutes)
-- **Accuracy trade-off**: 4.8% accuracy loss (97.6% → 92.8%)
-- **F1 macro trade-off**: 4.8% F1 loss (97.6% → 92.8%)
+### Trade-offs at Scale (Haiku vs Semantic Router)
+- **Cost savings**: 100% ($155.31 → $0)
+- **Speed improvement**: 292x faster (166.5 hours → 34.2 minutes)
+- **Accuracy improvement**: 17% accuracy gain (75.8% → 92.8%)
+- **F1 macro improvement**: 14.9% F1 gain (77.9% → 92.8%)
 
 The semantic router provides massive operational benefits for high-volume classification scenarios, with the accuracy trade-off often acceptable for real-time applications.
 
