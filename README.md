@@ -18,10 +18,12 @@ Dataset: Pre-split BBC News articles:
 
 The dataset should be placed in data/bbc-news-articles-labeled/ with the following structure:
 data/bbc-news-articles-labeled/
-``````
+```
 ├── train_data.csv      # 1,117 training articles
 ├── validation_data.csv # 360 validation articles  
 └── BBC News Test.csv   # 735 test articles
+```
+
 
 ## Prerequisites
 
@@ -33,8 +35,8 @@ data/bbc-news-articles-labeled/
 
 ### 1. Clone and Install Dependencies
 ```bash
-git clone <repository-url>
-cd redis_semantic_router
+git clone https://github.com/nkanu17/redis-semantic-router.git
+cd redis-semantic-router
 uv sync
 ```
 
@@ -300,11 +302,6 @@ semantic_router:
     track_usage: true
 ```
 
-After changing vectorizer type, retrain the router:
-```bash
-python main.py build_semantic_routes --force-retrain
-```
-
 > **Note:** Training always creates a fresh router with `overwrite=True`, replacing any existing router with the same name. The system automatically handles creating new routers vs loading existing ones during classification.
 
 ### Advanced Configuration
@@ -411,7 +408,7 @@ results/
 ### Viewing Results
 ```bash
 # Check latest results
-python main.py status
+uv run python main.py status
 
 # Redis web interface
 open http://localhost:8001
@@ -424,7 +421,7 @@ open http://localhost:8001
 docker restart redis-stack
 
 # Clear Redis data
-python main.py clear-routes
+uv run python main.py clear-routes
 
 # Import errors - ensure you're in src/
 cd src
