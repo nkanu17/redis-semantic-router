@@ -13,7 +13,7 @@ This project implements two approaches for classifying BBC news articles into 5 
 
 Dataset: Pre-split BBC News articles:
 - **Training**: 1,117 articles (`train_data.csv`) 
-- **Validation**: 373 articles (`validation_data.csv`)
+- **Validation**: 360 articles (`validation_data.csv`)
 - **Test**: 735 articles (`BBC News Test.csv`)
 
 ## Prerequisites
@@ -57,7 +57,7 @@ docker exec -it redis-stack redis-cli ping
 
 # Check system status
 cd src
-python main.py status
+uv run python main.py status
 # Expected: System status with Redis connection confirmed
 ```
 
@@ -73,27 +73,27 @@ cd src
 
 ```bash
 # Check system status
-python main.py status
+uv run python main.py status
 # Expected: Shows Redis connection, datasets, and router status
 
 # Build semantic routes (one-time setup)
-python main.py build_semantic_routes
+uv run python main.py build_semantic_routes
 # Expected: Creates vector embeddings for categories and stores routes in Redis
 
 # Run baseline LLM classification
-python main.py llm_cls
+uv run python main.py llm_cls
 # Expected: Processes validation articles with Claude API
 
 # Run semantic classification
-python main.py semantic_cls
+uv run python main.py semantic_cls
 # Expected: Fast vector similarity search as an alternative for llm classification
 
 # Compare results from both approaches
-python main.py evaluate
+uv run python main.py evaluate
 # Expected: Generates detailed comparison metrics and saves report
 
 # Clear all routes from Redis
-python main.py clear-routes
+uv run python main.py clear-routes
 # Expected: Removes all semantic routes from Redis
 ```
 
@@ -101,14 +101,14 @@ python main.py clear-routes
 
 ```bash
 # Use custom config file
-python main.py llm_cls --config custom_config.yaml
+uv run python main.py llm_cls --config custom_config.yaml
 
 # Force rebuild semantic routes
-python main.py build_semantic_routes --force-retrain
+uv run python main.py build_semantic_routes --force-retrain
 
 # Run on training data instead of test/validation data
-python main.py llm_cls --train-articles
-python main.py semantic_cls --train-articles
+uv run python main.py llm_cls --train-articles
+uv run python main.py semantic_cls --train-articles
 ```
 
 ## Embedding Vectorizers
@@ -346,28 +346,50 @@ semantic_router:
 </details>
 
 ## Performance Analysis at Scale
+## Performance Analysis at Scale
 
 Based on actual test results with 360 validation articles, here's the projected performance at **100,000 articles**:
 
-### LLM Classifier (Haiku)
-- **Total cost**: $155.31 (at $0.00156 per article)
-- **Total processing time**: 166.5 hours (5.996 seconds per article)
-- **Accuracy**: 75.8%
-- **F1 macro**: 77.9%
+### Claude Sonnet
+- **Total cost**: $186 (at $0.00186 per article)
+- **Total processing time**: 6-7 hours (0.23 seconds per article)
+- **Accuracy**: 95.5%
+- **F1 macro**: 95.6%
+
+### Claude Haiku
+- **Total cost**: $55 (at $0.00055 per article)
+- **Total processing time**: 13-14 hours (0.49 seconds per article)
+- **Accuracy**: 73.6%
+- **F1 macro**: 75.7%
 
 ### Semantic Router (HuggingFace embeddings)
 - **Total cost**: $0 (no API costs after training)
-- **Total processing time**: 34.2 minutes (20.6ms per article based on 7.4s for 360 articles)  
-- **Accuracy**: 92.8%
-- **F1 macro**: 92.8%
+- **Total processing time**: 21 minutes (0.02 seconds per article)
+- **Accuracy**: 92.7%
+- **F1 macro**: 92.7%
 
-### Trade-offs at Scale (Haiku vs Semantic Router)
-- **Cost savings**: 100% ($155.31 → $0)
-- **Speed improvement**: 292x faster (166.5 hours → 34.2 minutes)
-- **Accuracy improvement**: 17% accuracy gain (75.8% → 92.8%)
-- **F1 macro improvement**: 14.9% F1 gain (77.9% → 92.8%)
+### Performance Comparison
 
-The semantic router provides massive operational benefits for high-volume classification scenarios, with the accuracy trade-off often acceptable for real-time applications.
+**Semantic Router vs Claude Haiku:**
+- **Cost savings**: 100% ($55 → $0)
+- **Speed improvement**: 38.6x faster (13.5 hours → 21 minutes)
+- **Accuracy improvement**: +19.1 percentage points (73.6% → 92.7%)
+- **F1 macro improvement**: +17.0 percentage points (75.7% → 92.7%)
+
+**Semantic Router vs Claude Sonnet:**
+- **Cost savings**: 100% ($186 → $0) 
+- **Speed improvement**: 19.3x faster (6.5 hours → 21 minutes)
+- **Accuracy trade-off**: -2.8 percentage points (95.5% → 92.7%)
+- **F1 macro trade-off**: -2.9 percentage points (95.6% → 92.7%)
+
+### Key Insight
+
+The semantic router offers a **sweet spot** between cost, speed, and accuracy:
+- **Significantly outperforms** Claude Haiku on all metrics while being free and 38x faster
+- **Closely matches** Claude Sonnet's accuracy (92.7% vs 95.5%) while being free and 19x faster
+- **Ideal for high-volume scenarios** where the minor accuracy trade-off vs premium LLMs is acceptable
+
+The semantic router provides massive operational benefits for production workloads, making it particularly valuable for real-time classification at scale.
 
 ## Results
 
