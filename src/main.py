@@ -178,7 +178,6 @@ def main() -> None:
         help="Path to configuration file",
     )
 
-
     parser.add_argument(
         "--train-articles",
         action="store_true",

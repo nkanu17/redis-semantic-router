@@ -146,7 +146,6 @@ class RedisSemanticClassifier(BaseClassifier):
         Returns:
             Tuple of (predicted_category, confidence_score)
         """
-        # TODO: What if it was already trained and indexed? I need to check that somehow on redis.
         if not self.is_trained or self.router is None:
             raise RuntimeError("Router must be trained before classification")
 

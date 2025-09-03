@@ -103,11 +103,8 @@ class RouteBuilder:
         Returns:
             List of reference text strings
         """
-        # TODO: Remove truncation entirely - modern embedding models handle full text better
-        # TODO: Current truncation creates training/inference mismatch and loses information
         references = []
         for article in articles:
-            # TODO: Remove this truncation logic entirely
             # Truncate text if too long (legacy - should be removed)
             text = article.text[: self.max_text_length]
             if len(article.text) > self.max_text_length:
@@ -133,7 +130,6 @@ class RouteBuilder:
 
         # Sample articles by class
         articles_by_class = self._sample_articles_by_class(train_data)
-        # TODO: Do I need an 'other' class? Training does not have it. Might increase noise.
         routes = []
         for class_name, articles in articles_by_class.items():
             # Prepare reference texts
